@@ -1661,6 +1661,7 @@ const CATEGORY_ICONS = {
 
 const ADMIN_USER = "athenisa";
 const ADMIN_PASS = "admin2026";
+const DATA_VERSION = "2";
 
 let products = [];
 let cart = [];
@@ -1670,11 +1671,13 @@ let editingProductId = null;
 function init() {
   document.body.classList.add('js-ready');
 
+  const savedVersion = localStorage.getItem('athenisa_data_version');
   const saved = localStorage.getItem('athenisa_products');
-  if (saved) {
+  if (saved && savedVersion === DATA_VERSION) {
     products = JSON.parse(saved);
   } else {
     products = JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));
+    localStorage.setItem('athenisa_data_version', DATA_VERSION);
     saveProducts();
   }
   const savedCart = localStorage.getItem('athenisa_cart');
