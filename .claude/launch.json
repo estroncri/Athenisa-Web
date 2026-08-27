@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "athenisa",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["http-server", "C:\\Users\\RYZEN\\Desktop\\Athenisa-Web", "-p", "8090", "-c-1"],
+      "port": 8090
+    }
+  ]
+}
