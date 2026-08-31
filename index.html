@@ -1586,6 +1586,25 @@ body {
 <!-- Toast Container -->
 <div class="toast-container" id="toastContainer"></div>
 
+<!-- Firebase CDN -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+<script>
+// ===== FIREBASE CONFIG =====
+const firebaseConfig = {
+  apiKey: "AIzaSyD19zCGgUKMpKwO8VBWtwvL_pq1LWRIkMU",
+  authDomain: "athenisa-web.firebaseapp.com",
+  databaseURL: "https://athenisa-web-default-rtdb.firebaseio.com",
+  projectId: "athenisa-web",
+  storageBucket: "athenisa-web.firebasestorage.app",
+  messagingSenderId: "10357628554",
+  appId: "1:10357628554:web:f74f4fa7b36fc23332d773"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+</script>
+
 <script>
 // ===== DATA =====
 const DEFAULT_PRODUCTS = [
@@ -1797,6 +1816,11 @@ let editingProductId = null;
 function init() {
   document.body.classList.add('js-ready');
 
+  // Load cart from localStorage (cart is per-user, stays local)
+  const savedCart = localStorage.getItem('athenisa_cart');
+  if (savedCart) cart = JSON.parse(savedCart);
+
+  // First load from localStorage for instant display
   const savedVersion = localStorage.getItem('athenisa_data_version');
   const saved = localStorage.getItem('athenisa_products');
   if (saved && savedVersion === DATA_VERSION) {
@@ -1804,20 +1828,56 @@ function init() {
   } else {
     products = JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));
     localStorage.setItem('athenisa_data_version', DATA_VERSION);
-    saveProducts();
+    localStorage.setItem('athenisa_products', JSON.stringify(products));
   }
-  const savedCart = localStorage.getItem('athenisa_cart');
-  if (savedCart) cart = JSON.parse(savedCart);
 
   renderCategoryFilters();
   renderProducts();
   renderCart();
   setupScrollAnimations();
   setupNavbar();
+
+  // Then sync from Firebase (cloud takes priority)
+  loadFromFirebase();
+}
+
+function loadFromFirebase() {
+  db.ref('products').once('value').then(snapshot => {
+    const fbData = snapshot.val();
+    if (fbData) {
+      // Firebase has data — use it
+      products = Object.values(fbData);
+      localStorage.setItem('athenisa_products', JSON.stringify(products));
+      localStorage.setItem('athenisa_data_version', DATA_VERSION);
+      renderCategoryFilters();
+      renderProducts();
+      // Re-render admin if open
+      if (document.getElementById('adminPanel')?.classList.contains('show')) {
+        renderAdminProducts();
+        renderDashboard();
+        renderInventory();
+      }
+    } else {
+      // Firebase empty — upload DEFAULT_PRODUCTS as initial data
+      saveToFirebase();
+    }
+  }).catch(err => {
+    console.log('Firebase offline, usando datos locales:', err.message);
+  });
+}
+
+function saveToFirebase() {
+  const productsObj = {};
+  products.forEach(p => { productsObj[p.id] = p; });
+  db.ref('products').set(productsObj).catch(err => {
+    console.log('Error guardando en Firebase:', err.message);
+  });
 }
 
 function saveProducts() {
   localStorage.setItem('athenisa_products', JSON.stringify(products));
+  // Sync to Firebase so all devices see the changes
+  saveToFirebase();
 }
 function saveCart() {
   localStorage.setItem('athenisa_cart', JSON.stringify(cart));
